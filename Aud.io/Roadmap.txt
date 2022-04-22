@@ -26,3 +26,7 @@
 - User Accounts
 - Online / Head2Head (can we get that running off docker with some sort of sync service!?)
 - Rewrite for serverless??
+
+
+
+- I have no idea what i'm doing with GIT
