@@ -1,0 +1,28 @@
+﻿1. MVP
+
+-	Multiple categories (/folders)
+-	Add / remove from library
+-	Auto cue items
+-	Randomise file start point (assume 15s minimum?)
+-	Track EQ points chosen, focus more on the audible range
+
+
+2. Phase 2
+
+-	Build out UI
+-	Game Engine (React)
+-	Menu Engine	(React)
+-	Refactor all logic, Typescript+ES6
+
+-	Auto-categorise tracks?
+-	Manage library
+-	Parameterise game settings and UI
+-	Visualisation / 3D bits
+-	DB integration / Analytics / Progress over time
+
+3. Public!?!
+
+- More modes
+- User Accounts
+- Online / Head2Head (can we get that running off docker with some sort of sync service!?)
+- Rewrite for serverless??

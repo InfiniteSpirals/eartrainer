@@ -1,0 +1,557 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+    <div id="dev-panel">
+        <button class="end-tune">
+            End Tune
+        </button>
+        <button class="start-tune">
+            Start Tune
+        </button>
+        <button class="change-tune">
+            Change Tune
+        </button>
+        <input id="change-after" value="3" />
+        <br />
+        <br />
+        <button class="turn-off-eq">
+            Turn off EQ
+        </button>
+
+        <button class="turn-on-eq">
+            Turn on EQ
+        </button>
+        <button class="random-freq">
+            Randomise freq
+        </button>
+        <br />
+        <br />
+        <input type="number" class="guess-eq" />
+        <input type="number" class="real-eq" />
+        <button class="test-freq">
+            Guess!
+        </button>
+        <br />
+    </div>
+    <div id="render">
+        <div id="canvases">
+            <canvas id=canvas width=1000 height=500></canvas>
+            <canvas id="canvas2" width="1000" height="40"></canvas>
+        </div>
+        <div id="output">
+            <p id="your-guess">
+                Your Guess: <span class="value"></span>
+            </p>
+            <p id="actual-value">
+                Actual Value: <span class="value"></span>
+            </p>
+        </div>
+    </div>
+
+    <div id="buttons">
+        <a id="eq-off-btn" class="btn turn-off-eq">
+            EQ Off
+        </a>
+        <a id="eq-on-btn" class="btn turn-on-eq active">
+            EQ On
+        </a>
+    </div>
+    <div id="buttons">
+        <a id="lowpass-btn" class="btn filter-type" data-type="lowpass">
+            Lowpass
+        </a>
+        <a id="highpass-btn" class="btn filter-type" data-type="highpass">
+            Highpass
+        </a>
+        <a id="bandpass-btn" class="btn filter-type" data-type="bandpass">
+            Bandpass
+        </a>
+        <a id="lowshelf-btn" class="btn filter-type" data-type="lowshelf">
+            Lowshelf
+        </a>
+        <a id="highshelf-btn" class="btn filter-type" data-type="highshelf">
+            Highshelf
+        </a>
+        <a id="peaking-btn" class="btn active filter-type" data-type="peaking">
+            Peaking
+        </a>
+        <a id="notch-btn" class="btn filter-type" data-type="notch">
+            Notch
+        </a>
+        <!--<a id="notch-btn" class="btn filter-type" data-type="allpass">
+            Allpass
+        </a>-->
+    </div>
+
+    <div id="buttons">
+        <a id="lowpass-btn" class="btn gain-type" data-type="6">
+            +6
+        </a>
+        <a id="highpass-btn" class="btn gain-type active" data-type="15">
+            +15
+        </a>
+        <a id="bandpass-btn" class="btn gain-type" data-type="-6">
+            -6
+        </a>
+        <a id="lowshelf-btn" class="btn gain-type" data-type="-15">
+            -15
+        </a>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"
+            integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+    <script type="text/javascript">
+
+        /**
+         * Returns a random number between min (inclusive) and max (exclusive)
+         */
+        function getRandomArbitrary(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        /**
+         * Returns a random integer between min (inclusive) and max (inclusive).
+         * The value is no lower than min (or the next integer greater than min
+         * if min isn't an integer) and no greater than max (or the next integer
+         * lower than max if max isn't an integer).
+         * Using Math.round() will give you a non-uniform distribution!
+         */
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        //for (x = 0; x < 10; x++) {
+        //    console.log("x = " + getRandomInt(20, 16000));
+        //}
+
+
+        (function () {
+            // set up forked web audio context, for multiple browsers
+            // window. is needed otherwise Safari explodes
+
+            var tunes =
+            {
+                currentIndex: 0,
+                repo: ['audio/untitled.wav', 'audio/untitled2.wav', 'audio/untitled3.wav', 'audio/untitled4.wav', 'audio/untitled5.wav'],
+                guessesSinceLastChange: 0,
+                guessesPerChange: function () {
+                    return $('#change-after').val() - 1;
+                }
+            };
+
+            var filterSettings = {
+                types: ['lowpass', 'highpass', 'peaking', 'notch', 'allpass', 'highshelf', 'lowshelf'],
+                currentType: 'peaking',
+                gain: 15,
+                Q: 3
+            }
+
+
+            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            var voiceSelect = document.getElementById("voice");
+            var source;
+            var stream;
+
+            var exposeMe = {};
+
+            var biquadFilter = audioCtx.createBiquadFilter();
+            biquadFilter.type = filterSettings.currentType;
+            biquadFilter.frequency.value = 600;
+            biquadFilter.gain.value = filterSettings.gain;
+            biquadFilter.Q.value = filterSettings.Q;
+
+            var gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.7;
+
+            exposeMe.stopEq = function () {
+                console.log("stopping eq");
+                biquadFilter.gain.value = 0;
+            }
+
+            exposeMe.changeFilterType = function (type) {
+                biquadFilter.type = type;
+                filterSettings.currentType = type;
+            }
+
+            exposeMe.startEq = function () {
+                console.log("stopping eq");
+                biquadFilter.gain.value = 15;
+            }
+
+            exposeMe.changeGain = function (val) {
+                biquadFilter.gain.value = val;
+                filterSettings.gain = val;
+            }
+
+            exposeMe.randomEq = function () {
+                console.log("randomising eq");
+
+                if (tunes.guessesSinceLastChange < tunes.guessesPerChange()) {
+                    // increment
+                    tunes.guessesSinceLastChange++;
+                } else {
+                    exposeMe.changeTune();
+                    tunes.guessesSinceLastChange = 0;
+                }
+
+
+                biquadFilter.frequency.value = getRandomInt(70, 14000);
+            }
+
+            exposeMe.endTune = function () {
+                source.stop();
+            }
+
+            exposeMe.changeTune = function () {
+                source.stop();
+                if (tunes.currentIndex != (tunes.repo.length - 1)) {
+                    tunes.currentIndex++;
+                }
+                else {
+                    tunes.currentIndex = 0;
+                }
+                exposeMe.startTune();
+            }
+
+            exposeMe.startTune = function () {
+
+                var tuneUrl = tunes.repo[tunes.currentIndex];
+
+                var request = new XMLHttpRequest();
+                request.open('GET', tuneUrl, true);
+                request.responseType = 'arraybuffer';
+                request.onload = function () {
+                    audioCtx.decodeAudioData(request.response, function (buffer) {
+                        startPlayingTunes(buffer);
+                    }, function () { console.log("nooooo"); });
+                }
+                request.send();
+            }
+
+            exposeMe.testEq = function ($input) {
+                $input.val(biquadFilter.frequency.value);
+                return biquadFilter.frequency.value;
+            }
+
+            // load the music
+
+
+            function startPlayingTunes(buffer) {
+                source = audioCtx.createBufferSource(); // creates a sound source
+                source.buffer = buffer;                     // tell the source which sound to play
+                source.connect(biquadFilter);               // connect the source to the context's destination (the speakers)
+                biquadFilter.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                source.start(0);
+            }
+
+
+
+            window.soundDemo = exposeMe;
+
+        })();
+
+        (function () {
+            var width_px = 1000;
+            var frame = 0;
+            var mousePos = {
+                inuse: false,
+                x: 0,
+                y: 0
+            };
+
+            var mouseClickedAnim = {
+                x: 0,
+                shouldStart: false,
+                framesPassed: 0
+            }
+
+            var actualThingAnim = {
+                x: 0,
+                shouldStart: false,
+                framesPassed: 0
+            }
+
+            function frequencty_to_px(frequency) {
+                var min_f = Math.log(20) / Math.log(10),
+                    max_f = Math.log(16000) / Math.log(10),
+                    range = max_f - min_f,
+                    position_px = (Math.log(frequency) / Math.log(10) - min_f) / range * width_px;
+                return position_px;
+            }
+
+            function px_to_frequency(px) {
+                var width_px = 1000;
+                var min_f = Math.log(20) / Math.log(10),
+                    max_f = Math.log(16000) / Math.log(10),
+                    range = max_f - min_f,
+                    position_frequency = Math.exp((px * range / width_px + min_f) * Math.log(10));
+
+                return position_frequency;
+            }
+
+            var canvas = document.getElementById("canvas");
+            var ctx = canvas.getContext("2d");
+
+            var paintCanvas = function () {
+                ctx.fillStyle = "#4B3F72";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                var plotpoints = [20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000, 15000, 16000];
+
+                var magicPoints = [20, 100, 1000, 5000, 10000, 16000];
+
+                for (var x = 0; x < plotpoints.length; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(frequencty_to_px(plotpoints[x]), 0);
+
+                    if (magicPoints.indexOf(plotpoints[x]) != -1) {
+                        ctx.lineWidth = 5;
+                    } else {
+                        ctx.lineWidth = 1;
+                    }
+                    // End point (180,47)
+                    ctx.lineTo(frequencty_to_px(plotpoints[x]), 500);
+                    // Make the line visible
+                    ctx.strokeStyle = '#FFC857';
+
+                    ctx.stroke();
+
+                }
+
+                if (mousePos.inuse) {
+                    ctx.beginPath();
+                    ctx.moveTo(mousePos.x, 0);
+
+                    ctx.lineWidth = 3;
+
+                    ctx.lineTo(mousePos.x, 500);
+
+                    // Make the line visible
+                    ctx.strokeStyle = '#119DA4';
+
+                    ctx.stroke();
+                }
+
+                if (actualThingAnim.shouldStart && actualThingAnim.framesPassed < 100) {
+                    ctx.beginPath();
+                    ctx.moveTo(actualThingAnim.x, 0);
+
+                    ctx.lineWidth = 10;
+
+                    ctx.lineTo(actualThingAnim.x, 500);
+
+                    // Make the line visible
+                    ctx.strokeStyle = '#FFDC94';
+
+                    ctx.stroke();
+
+                    actualThingAnim.framesPassed++;
+                }
+                else if (actualThingAnim.shouldStart && actualThingAnim.framesPassed >= 100) {
+                    actualThingAnim.shouldStart = false;
+                    actualThingAnim.framesPassed = 0;
+                }
+
+                if (mouseClickedAnim.shouldStart && mouseClickedAnim.framesPassed < 15) {
+
+                    if (mouseClickedAnim.framesPassed == 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(mouseClickedAnim.x, 0);
+
+                        ctx.lineWidth = 5;
+
+                        ctx.lineTo(mouseClickedAnim.x, 500);
+
+                        // Make the line visible
+                        ctx.strokeStyle = '#19647E';
+
+                        ctx.stroke();
+                    } else {
+
+                        ctx.beginPath();
+                        ctx.moveTo(mouseClickedAnim.x + (mouseClickedAnim.framesPassed * 2), 0);
+
+                        ctx.lineWidth = 3;
+
+                        ctx.lineTo(mouseClickedAnim.x + (mouseClickedAnim.framesPassed * 2), 500);
+
+                        // Make the line visible
+                        ctx.strokeStyle = '#19647E';
+
+                        ctx.stroke();
+
+                        ctx.beginPath();
+                        ctx.moveTo(mouseClickedAnim.x - (mouseClickedAnim.framesPassed * 2), 0);
+
+                        ctx.lineWidth = 3;
+
+                        ctx.lineTo(mouseClickedAnim.x - (mouseClickedAnim.framesPassed * 2), 500);
+
+                        // Make the line visible
+                        ctx.strokeStyle = '#19647E';
+
+                        ctx.stroke();
+
+
+                    }
+                    mouseClickedAnim.framesPassed++;
+
+                } else if (mouseClickedAnim.shouldStart && mouseClickedAnim.framesPassed >= 15) {
+                    mouseClickedAnim.shouldStart = false;
+                    mouseClickedAnim.framesPassed = 0;
+                }
+
+                requestAnimationFrame(function () {
+                    //console.log("frame", frame);
+                    frame++;
+                    paintCanvas();
+
+                });
+
+            }
+
+
+
+            function getMousePos(canvas, evt) {
+                var rect = canvas.getBoundingClientRect(), root = document.documentElement;
+
+                // return relative mouse position
+                var mouseX = evt.clientX - rect.left - root.scrollLeft;
+                var mouseY = evt.clientY - rect.top - root.scrollTop;
+                mousePos.x = mouseX;
+                mousePos.y = mouseY;
+                mousePos.inuse = true;
+                return mouseX;
+            }
+
+
+            canvas.addEventListener('mousemove', function (evt) {
+                var mousePos = getMousePos(canvas, evt);
+            }, false);
+
+            canvas.addEventListener('mouseup', function (evt) {
+                var mousePos = getMousePos(canvas, evt);
+                mouseClickedAnim.x = Math.ceil(mousePos);
+                mouseClickedAnim.shouldStart = true;
+
+                var guess = px_to_frequency(Math.ceil(mousePos));
+                $('#your-guess span').text(Math.ceil(guess) + 'hz');
+                $('#your-guess').addClass('visible');
+                console.log("your guess:" + guess);
+                var actual = soundDemo.testEq($('.real-eq'));
+                $('#actual-value span').text(actual + 'hz')
+                $('#actual-value').addClass('visible');
+
+
+
+                actualThingAnim.x = frequencty_to_px(actual);
+                actualThingAnim.shouldStart = true;
+
+                setTimeout(function () {
+                    $('.real-eq').val('');
+                    $('.guess-eq').val('');
+
+                    $('#actual-value').removeClass('visible');
+                    $('#your-guess').removeClass('visible');
+
+                    soundDemo.randomEq();
+                }, 2500);
+
+
+            }, false);
+
+
+            requestAnimationFrame(function () {
+                paintCanvas();
+                console.log("frame", frame);
+            });
+
+            // and the scale one...
+            var formatPlotPoint = function (plotpoint) {
+                var stringPoint = plotpoint.toString();
+                if (stringPoint.length == 4) {
+                    return stringPoint.substring(0, 1) + "k";
+                }
+                if (stringPoint.length == 5) {
+                    return stringPoint.substring(0, 2);
+                }
+                return stringPoint;
+            }
+            var plotpoints = [20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000, 15000, 16000];
+            var canvas2 = document.getElementById("canvas2");
+            var ctx2 = canvas2.getContext("2d");
+
+            ctx2.fillStyle = "#19647E";
+            ctx2.fillRect(0, 0, canvas2.width, canvas2.height);
+            ctx2.font = '9px Catamaran';
+            ctx2.fillStyle = '#FFC857';
+
+            for (var x = 0; x < plotpoints.length; x++) {
+                ctx2.fillText(formatPlotPoint(plotpoints[x]), frequencty_to_px(plotpoints[x]), 15);
+            }
+
+
+        })();
+
+        $(function () {
+            $('.end-tune').click(function () {
+                console.log("neding");
+                soundDemo.endTune();
+            });
+
+            $('.start-tune').click(function () {
+                console.log("starting");
+                soundDemo.startTune();
+            });
+
+            $('.change-tune').click(function () {
+                console.log("changing");
+                soundDemo.changeTune();
+            });
+
+            $('.turn-off-eq').click(function () {
+                console.log("no more eq");
+                $('.turn-on-eq').removeClass('active');
+                $(this).addClass('active');
+                soundDemo.stopEq();
+            });
+            $('.turn-on-eq').click(function () {
+                console.log("eq on");
+                $('.turn-off-eq').removeClass('active');
+                $(this).addClass('active');
+                soundDemo.startEq();
+            });
+
+            $('.random-freq').click(function () {
+                console.log("eq random");
+                soundDemo.randomEq();
+            });
+
+            $('.test-freq').click(function () {
+                var guess = $('.guess-eq');
+                soundDemo.testEq($('.real-eq'));
+                setTimeout(function () {
+                    $('.real-eq').val('');
+                }, 2500);
+            });
+
+            $('.filter-type').click(function () {
+                $('.filter-type').removeClass('active');
+                $(this).addClass('active');
+                soundDemo.changeFilterType($(this).data('type'))
+            });
+
+            $('.gain-type').click(function () {
+                $('.gain-type').removeClass('active');
+                $(this).addClass('active');
+                soundDemo.changeGain($(this).data('type'))
+            });
+
+        });
+    </script>

@@ -1,0 +1,76 @@
+﻿* {
+    box-sizing: border-box;
+    outline: none;
+}
+
+body {
+    background: #1F2041;
+    font-family: 'Catamaran', sans-serif;
+}
+
+#dev-panel {
+    display: block;
+}
+
+#canvases {
+    float: left;
+    width: 1000px;
+}
+
+#output {
+    float: right;
+    width: calc(100% - 1000px);
+    padding: 20px;
+    text-align: right;
+}
+
+#output p#your-guess {
+    color: #119DA4
+}
+
+#output p#actual-value {
+    color: #FFC857;
+}
+
+#output p, #output span {
+    font-size: 58px;
+}
+
+#output p {
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+#output p.visible {
+    opacity: 1;
+}
+
+.btn {
+    text-align: center;
+    padding: 10px 30px;
+    font-size: 24px;
+    background: #19647E;
+    color: #BABBC5;
+    transition: all 0.2s ease;
+    opacity: 1;
+    margin-right: 20px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.btn.active {
+    background: #FFC857;
+    color: #19647E;
+}
+
+#render {
+    overflow: hidden;
+}
+
+#buttons {
+    padding: 20px 0;
+}
