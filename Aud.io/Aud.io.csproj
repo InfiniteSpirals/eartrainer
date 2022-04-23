@@ -9,11 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="wwwroot\audio\untitled.wav" />
-    <None Include="wwwroot\audio\untitled2.wav" />
-    <None Include="wwwroot\audio\untitled3.wav" />
-    <None Include="wwwroot\audio\untitled4.wav" />
-    <None Include="wwwroot\audio\untitled5.wav" />
     <None Include="wwwroot\css\styles\primary.scss" />
   </ItemGroup>
 
@@ -22,6 +17,15 @@
     <PackageReference Include="LigerShark.WebOptimizer.Core" Version="3.0.357" />
     <PackageReference Include="LigerShark.WebOptimizer.Sass" Version="3.0.84" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aud.io.Models\Aud.io.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\audio\idm\" />
+    <Folder Include="wwwroot\audio\punk\" />
   </ItemGroup>
 
 </Project>
