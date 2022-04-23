@@ -133,16 +133,75 @@
         (function () {
             // set up forked web audio context, for multiple browsers
             // window. is needed otherwise Safari explodes
-
             var tunes =
             {
                 currentIndex: 0,
-                repo: ['audio/untitled.wav', 'audio/untitled2.wav', 'audio/untitled3.wav', 'audio/untitled4.wav', 'audio/untitled5.wav'],
+                categories: [], // TODO
+                repo: [],
                 guessesSinceLastChange: 0,
                 guessesPerChange: function () {
                     return $('#change-after').val() - 1;
                 }
             };
+
+            var randomTracker = {
+                toAvoid: [],
+                shouldAvoid: function(freq) {
+                    
+                    let isFreqInHistory = false;
+                    this.toAvoid.forEach((item) => {
+                        console.log(item);
+                        if(item > 8000){
+                            let upperBound = item + 5000;
+                            let lowerBound = item - 3000;
+                            if(lowerBound < freq && upperBound > freq){
+                                isFreqInHistory = true;
+                            }
+                        }
+                        else if(item > 1000){
+                            let upperBound = item + 1250;
+                            let lowerBound = item - 1250;
+                            if(lowerBound < freq && upperBound > freq){
+                                isFreqInHistory = true;
+                            }
+                        }
+                        else {
+                            let upperBound = item + 250;
+                            let lowerBound = item - 250;
+                            if(lowerBound < freq && upperBound > freq){
+                                isFreqInHistory = true;
+                            }
+                        }
+                    });
+                    //console.log('should avoid', freq, isFreqInHistory);
+                    console.log('should avoid', isFreqInHistory);
+                    return isFreqInHistory;
+                },
+                addEntry: function(entry) {
+                    this.toAvoid.unshift(entry);
+                    if(this.toAvoid.length > 3){
+                        this.toAvoid.pop();
+                    }
+                }
+            }
+
+            // hack for now
+            fetch('/api/library')
+                .then(response => response.json())
+                .then(function(data){
+                    tunes.repo = [];
+                    data.forEach((category) => {
+                        tunes.categories.push(category);
+                        category.tracks.forEach((track) => {
+                            tunes.repo.push(track.filepath);
+                        });
+
+                        
+                  });
+                  console.log('final repo', tunes.repo);
+                });
+
+            
 
             var filterSettings = {
                 types: ['lowpass', 'highpass', 'peaking', 'notch', 'allpass', 'highshelf', 'lowshelf'],
@@ -190,17 +249,24 @@
 
             exposeMe.randomEq = function () {
                 console.log("randomising eq");
+                var testFreq = getRandomInt(70, 14000);
 
-                if (tunes.guessesSinceLastChange < tunes.guessesPerChange()) {
-                    // increment
-                    tunes.guessesSinceLastChange++;
-                } else {
-                    exposeMe.changeTune();
-                    tunes.guessesSinceLastChange = 0;
+                if(!randomTracker.shouldAvoid(testFreq)){
+                    if (tunes.guessesSinceLastChange < tunes.guessesPerChange()) {
+                        // increment
+                        tunes.guessesSinceLastChange++;
+                    } else {
+                        exposeMe.changeTune();
+                        tunes.guessesSinceLastChange = 0;
+                    }
+
+
+                    biquadFilter.frequency.value = testFreq;
+                    randomTracker.addEntry(testFreq);
+                }else{
+                    exposeMe.randomEq();
                 }
-
-
-                biquadFilter.frequency.value = getRandomInt(70, 14000);
+                
             }
 
             exposeMe.endTune = function () {
