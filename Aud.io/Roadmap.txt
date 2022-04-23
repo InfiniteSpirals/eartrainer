@@ -29,4 +29,5 @@
 
 
 
-- Ok, less stressy now, I want this pipeline to do the work for me though.
+- Ok, less stressy now, I want this pipeline to do the work for me though. 
+- If this syncs to GH then yes, the pipeline is doing it's job
